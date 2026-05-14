@@ -3,31 +3,76 @@ import { Gift } from 'lucide-react';
 import { ethers } from 'ethers';
 import PredictionMarketArtifact from '../../artifacts/contracts/PredictionMarket.sol/PredictionMarket.json';
 
+const ARC_TESTNET_CHAIN_ID_DECIMAL = 5042002;
+const ARC_TESTNET_CHAIN_ID_HEX = '0x4CEF52';
+
 const DailyClaim = ({ address, points, setPoints }) => {
   const [isClaiming, setIsClaiming] = useState(false);
   const [status, setStatus] = useState('');
 
+  const switchToArcTestnet = async () => {
+    if (!window.ethereum) {
+      throw new Error('Wallet not found');
+    }
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: ARC_TESTNET_CHAIN_ID_HEX }],
+      });
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [
+            {
+              chainId: ARC_TESTNET_CHAIN_ID_HEX,
+              chainName: 'Arc Testnet',
+              nativeCurrency: {
+                name: 'USDC',
+                symbol: 'USDC',
+                decimals: 18,
+              },
+              rpcUrls: ['https://rpc.testnet.arc.network'],
+              blockExplorerUrls: ['https://testnet.arcscan.app'],
+            },
+          ],
+        });
+      } else {
+        throw switchError;
+      }
+    }
+  };
+
   const handleClaim = async () => {
     try {
       setIsClaiming(true);
-      setStatus('Waiting for wallet confirmation...');
+      setStatus('Checking wallet...');
 
       if (!window.ethereum) {
-        throw new Error('Wallet not found');
-      }
-
-      if (!address) {
-        throw new Error('Connect wallet first');
+        throw new Error('Wallet not found. Please install MetaMask or Rabby.');
       }
 
       const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
 
       if (!contractAddress) {
-        throw new Error('Contract not configured');
+        throw new Error('Contract not configured. Missing VITE_CONTRACT_ADDRESS.');
       }
 
+      await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      });
+
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const network = await provider.getNetwork();
+
+      if (Number(network.chainId) !== ARC_TESTNET_CHAIN_ID_DECIMAL) {
+        setStatus('Switching to Arc Testnet...');
+        await switchToArcTestnet();
+      }
+
+      const refreshedProvider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await refreshedProvider.getSigner();
 
       const contract = new ethers.Contract(
         contractAddress,
@@ -35,7 +80,11 @@ const DailyClaim = ({ address, points, setPoints }) => {
         signer
       );
 
-      const tx = await contract.dailyClaim();
+      setStatus('Waiting for wallet confirmation...');
+
+      const tx = await contract.dailyClaim({
+        gasLimit: 300000,
+      });
 
       setStatus('Transaction pending...');
       await tx.wait();
@@ -45,11 +94,17 @@ const DailyClaim = ({ address, points, setPoints }) => {
     } catch (error) {
       console.error(error);
 
-      setStatus(
+      let message =
         error?.shortMessage ||
+        error?.reason ||
         error?.message ||
-        'Transaction failed'
-      );
+        'Transaction failed';
+
+      if (message.includes('user rejected')) {
+        message = 'Transaction rejected in wallet.';
+      }
+
+      setStatus(message);
     } finally {
       setIsClaiming(false);
     }
@@ -69,9 +124,18 @@ const DailyClaim = ({ address, points, setPoints }) => {
         </h3>
 
         <p className="text-gray-400 mb-6">
-          Claim 10 points every 24 hours.
-          This requires Arc Testnet USDC gas fee.
+          Claim 10 points every 24 hours. This is a real Arc Testnet transaction
+          and requires testnet USDC for gas.
         </p>
+
+        <a
+          href="https://faucet.circle.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="text-arcBlue text-sm underline mb-5"
+        >
+          Need gas? Get Arc Testnet USDC from faucet
+        </a>
 
         <button
           onClick={handleClaim}
@@ -92,7 +156,7 @@ const DailyClaim = ({ address, points, setPoints }) => {
         )}
 
         {status && (
-          <p className="text-arcBlue text-sm mt-4">
+          <p className="text-arcBlue text-sm mt-4 break-words max-w-full">
             {status}
           </p>
         )}
