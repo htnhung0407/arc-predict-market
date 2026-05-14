@@ -4,7 +4,6 @@ import { ethers } from 'ethers';
 import PredictionMarketArtifact from '../../artifacts/contracts/PredictionMarket.sol/PredictionMarket.json';
 
 const ARC_TESTNET_CHAIN_ID_HEX = '0x4cef52';
-const FALLBACK_CONTRACT_ADDRESS = '0x18b47ad9e8e820da05cf65b5c12d07d89c11b47cb';
 
 const DailyClaim = ({ address, points, setPoints }) => {
   const [isClaiming, setIsClaiming] = useState(false);
@@ -46,17 +45,14 @@ const DailyClaim = ({ address, points, setPoints }) => {
       setStatus('Checking wallet...');
 
       if (!window.ethereum) {
-        throw new Error('Wallet not found. Please install Rabby or MetaMask.');
+        throw new Error('Wallet not found.');
       }
 
       const contractAddress =
-        import.meta.env.VITE_CONTRACT_ADDRESS || FALLBACK_CONTRACT_ADDRESS;
+        import.meta.env.VITE_CONTRACT_ADDRESS ||
+        '0x18b47ad9e8e820da05cf65b5c12d07d89c11b47cb';
 
       console.log('CONTRACT:', contractAddress);
-
-      if (!ethers.isAddress(contractAddress)) {
-        throw new Error('Contract address is invalid.');
-      }
 
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
@@ -78,6 +74,7 @@ const DailyClaim = ({ address, points, setPoints }) => {
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
+
       const signer = await provider.getSigner(currentAddress);
 
       const contract = new ethers.Contract(
@@ -93,9 +90,11 @@ const DailyClaim = ({ address, points, setPoints }) => {
       });
 
       setStatus('Transaction pending...');
+
       await tx.wait();
 
       setStatus('Daily claim confirmed!');
+
       setPoints(Number(points || 0) + 10);
     } catch (error) {
       console.error(error);
@@ -134,8 +133,8 @@ const DailyClaim = ({ address, points, setPoints }) => {
         </h3>
 
         <p className="text-gray-400 mb-6">
-          Claim 10 points every 24 hours. This is a real Arc Testnet
-          transaction and requires testnet USDC for gas.
+          Claim 10 points every 24 hours.
+          This is a real Arc Testnet transaction and requires testnet USDC for gas.
         </p>
 
         <a
