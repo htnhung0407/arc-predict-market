@@ -50,7 +50,7 @@ const DailyClaim = ({ address, points, setPoints }) => {
 
       const contractAddress =
         import.meta.env.VITE_CONTRACT_ADDRESS ||
-        '0x18b47ad9e8e820da05cf65b5c12d07d89c11b47cb';
+        '0x18b47ad9e8e820da05cf65b5c12d07d89c11b47';
 
       console.log('CONTRACT:', contractAddress);
 
