@@ -71,10 +71,15 @@ const DailyClaim = ({ address, points, setPoints }) => {
         await switchToArcTestnet();
       }
 
-      // ✅ FIX: dùng "any" thay vì hardcode chainId
-      // - Không bị lỗi "network changed" sau khi switch chain
-      // - Không bị lỗi "network does not support ENS"
+      // ✅ FIX ethers v6: gọi thẳng RPC bằng eth_sendTransaction
+      // để hoàn toàn bypass ENS lookup của BrowserProvider
       const provider = new ethers.BrowserProvider(window.ethereum, "any");
+
+      // Patch getNetwork để trả về network không có ENS
+      provider.getNetwork = async () => {
+        return new ethers.Network('arc-testnet', 5038162);
+      };
+
       const signer = await provider.getSigner();
 
       const contract = new ethers.Contract(
