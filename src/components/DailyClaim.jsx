@@ -5,6 +5,10 @@ import PredictionMarketArtifact from '../../artifacts/contracts/PredictionMarket
 
 const ARC_TESTNET_CHAIN_ID_HEX = '0x4cef52';
 
+const CONTRACT_ADDRESS =
+  import.meta.env.VITE_CONTRACT_ADDRESS ||
+  '0x18b47ad9e8e20da05cf65b5c12d07d89c11b47cb';
+
 const DailyClaim = ({ address, points, setPoints }) => {
   const [isClaiming, setIsClaiming] = useState(false);
   const [status, setStatus] = useState('');
@@ -45,14 +49,10 @@ const DailyClaim = ({ address, points, setPoints }) => {
       setStatus('Checking wallet...');
 
       if (!window.ethereum) {
-        throw new Error('Wallet not found.');
+        throw new Error('Wallet not found. Please install Rabby or MetaMask.');
       }
 
-      const contractAddress =
-        import.meta.env.VITE_CONTRACT_ADDRESS ||
-        '0x18b47ad9e8e820da05cf65b5c12d07d89c11b47';
-
-      console.log('CONTRACT:', contractAddress);
+      console.log('CONTRACT:', CONTRACT_ADDRESS);
 
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
@@ -61,8 +61,6 @@ const DailyClaim = ({ address, points, setPoints }) => {
       if (!accounts || accounts.length === 0) {
         throw new Error('Wallet not connected.');
       }
-
-      const currentAddress = accounts[0];
 
       const chainId = await window.ethereum.request({
         method: 'eth_chainId',
@@ -74,11 +72,10 @@ const DailyClaim = ({ address, points, setPoints }) => {
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
-
       const signer = await provider.getSigner();
 
       const contract = new ethers.Contract(
-        contractAddress,
+        CONTRACT_ADDRESS,
         PredictionMarketArtifact.abi,
         signer
       );
@@ -90,11 +87,9 @@ const DailyClaim = ({ address, points, setPoints }) => {
       });
 
       setStatus('Transaction pending...');
-
       await tx.wait();
 
       setStatus('Daily claim confirmed!');
-
       setPoints(Number(points || 0) + 10);
     } catch (error) {
       console.error(error);
@@ -133,8 +128,8 @@ const DailyClaim = ({ address, points, setPoints }) => {
         </h3>
 
         <p className="text-gray-400 mb-6">
-          Claim 10 points every 24 hours.
-          This is a real Arc Testnet transaction and requires testnet USDC for gas.
+          Claim 10 points every 24 hours. This is a real Arc Testnet transaction
+          and requires testnet USDC for gas.
         </p>
 
         <a
@@ -150,9 +145,7 @@ const DailyClaim = ({ address, points, setPoints }) => {
           onClick={handleClaim}
           disabled={isClaiming || !address}
           className={`px-12 py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-arcBlue to-arcPurple text-white shadow-[0_0_20px_rgba(58,123,213,0.5)] transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(0,210,255,0.6)] ${
-            isClaiming || !address
-              ? 'opacity-70 cursor-not-allowed'
-              : ''
+            isClaiming || !address ? 'opacity-70 cursor-not-allowed' : ''
           }`}
         >
           {isClaiming ? 'Claiming...' : 'Claim Daily'}
