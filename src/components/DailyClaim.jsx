@@ -71,34 +71,43 @@ const DailyClaim = ({ address, points, setPoints }) => {
         await switchToArcTestnet();
       }
 
-      // ✅ FIX ethers v6: gọi thẳng RPC bằng eth_sendTransaction
-      // để hoàn toàn bypass ENS lookup của BrowserProvider
-      const provider = new ethers.BrowserProvider(window.ethereum, "any");
-
-      // Patch getNetwork để trả về network không có ENS
-      provider.getNetwork = async () => {
-        return new ethers.Network('arc-testnet', 5038162);
-      };
-
-      const signer = await provider.getSigner();
-
-      const contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        PredictionMarketArtifact.abi,
-        signer
-      );
+      // ✅ FIX hoàn toàn ENS trong ethers v6:
+      // Encode calldata thủ công và gửi qua window.ethereum trực tiếp
+      // Không dùng BrowserProvider để tránh ENS lookup hoàn toàn
+      const iface = new ethers.Interface(PredictionMarketArtifact.abi);
+      const calldata = iface.encodeFunctionData('dailyClaim', []);
 
       setStatus('Waiting for wallet confirmation...');
 
-      const tx = await contract.dailyClaim({
-        gasLimit: 300000,
+      const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: accounts[0],
+          to: CONTRACT_ADDRESS,
+          data: calldata,
+          gas: '0x493E0', // 300000 in hex
+        }],
       });
 
       setStatus('Transaction pending...');
-      await tx.wait();
 
-      setStatus('Daily claim confirmed!');
-      setPoints(Number(points || 0) + 10);
+      // Poll transaction receipt
+      let receipt = null;
+      while (!receipt) {
+        await new Promise(r => setTimeout(r, 2000));
+        receipt = await window.ethereum.request({
+          method: 'eth_getTransactionReceipt',
+          params: [txHash],
+        });
+      }
+
+      if (receipt.status === '0x1') {
+        setStatus('Daily claim confirmed!');
+        setPoints(Number(points || 0) + 10);
+      } else {
+        setStatus('You already claimed. Try again after 24 hours.');
+      }
+
     } catch (error) {
       console.error(error);
 
