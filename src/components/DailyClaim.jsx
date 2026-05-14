@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 import PredictionMarketArtifact from '../../artifacts/contracts/PredictionMarket.sol/PredictionMarket.json';
 
 const ARC_TESTNET_CHAIN_ID_HEX = '0x4cef52';
+const FALLBACK_CONTRACT_ADDRESS = '0x18b47ad9e8E820da05CF65b5c12D07d89C11b47CB';
 
 const DailyClaim = ({ address, points, setPoints }) => {
   const [isClaiming, setIsClaiming] = useState(false);
@@ -19,17 +20,19 @@ const DailyClaim = ({ address, points, setPoints }) => {
       if (error.code === 4902) {
         await window.ethereum.request({
           method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: ARC_TESTNET_CHAIN_ID_HEX,
-            chainName: 'Arc Testnet',
-            nativeCurrency: {
-              name: 'USDC',
-              symbol: 'USDC',
-              decimals: 18,
+          params: [
+            {
+              chainId: ARC_TESTNET_CHAIN_ID_HEX,
+              chainName: 'Arc Testnet',
+              nativeCurrency: {
+                name: 'USDC',
+                symbol: 'USDC',
+                decimals: 18,
+              },
+              rpcUrls: ['https://rpc.testnet.arc.network'],
+              blockExplorerUrls: ['https://testnet.arcscan.app'],
             },
-            rpcUrls: ['https://rpc.testnet.arc.network'],
-            blockExplorerUrls: ['https://testnet.arcscan.app'],
-          }],
+          ],
         });
       } else {
         throw error;
@@ -43,18 +46,25 @@ const DailyClaim = ({ address, points, setPoints }) => {
       setStatus('Checking wallet...');
 
       if (!window.ethereum) {
-        throw new Error('Wallet not found. Please install MetaMask or Rabby.');
+        throw new Error('Wallet not found. Please install Rabby or MetaMask.');
       }
 
-      const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+      const contractAddress =
+        import.meta.env.VITE_CONTRACT_ADDRESS || FALLBACK_CONTRACT_ADDRESS;
 
-      if (!contractAddress || !ethers.isAddress(contractAddress)) {
-        throw new Error('Contract not configured correctly.');
+      console.log('CONTRACT:', contractAddress);
+
+      if (!ethers.isAddress(contractAddress)) {
+        throw new Error('Contract address is invalid.');
       }
 
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       });
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('Wallet not connected.');
+      }
 
       const currentAddress = accounts[0];
 
@@ -63,7 +73,7 @@ const DailyClaim = ({ address, points, setPoints }) => {
       });
 
       if (chainId.toLowerCase() !== ARC_TESTNET_CHAIN_ID_HEX) {
-        setStatus('Please switch to Arc Testnet...');
+        setStatus('Switching to Arc Testnet...');
         await switchToArcTestnet();
       }
 
@@ -100,7 +110,7 @@ const DailyClaim = ({ address, points, setPoints }) => {
         message = 'You already claimed. Try again after 24 hours.';
       }
 
-      if (message.includes('user rejected')) {
+      if (message.toLowerCase().includes('user rejected')) {
         message = 'Transaction rejected in wallet.';
       }
 
@@ -124,7 +134,8 @@ const DailyClaim = ({ address, points, setPoints }) => {
         </h3>
 
         <p className="text-gray-400 mb-6">
-          Claim 10 points every 24 hours. This is a real Arc Testnet transaction and requires testnet USDC for gas.
+          Claim 10 points every 24 hours. This is a real Arc Testnet
+          transaction and requires testnet USDC for gas.
         </p>
 
         <a
@@ -140,7 +151,9 @@ const DailyClaim = ({ address, points, setPoints }) => {
           onClick={handleClaim}
           disabled={isClaiming || !address}
           className={`px-12 py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-arcBlue to-arcPurple text-white shadow-[0_0_20px_rgba(58,123,213,0.5)] transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(0,210,255,0.6)] ${
-            isClaiming || !address ? 'opacity-70 cursor-not-allowed' : ''
+            isClaiming || !address
+              ? 'opacity-70 cursor-not-allowed'
+              : ''
           }`}
         >
           {isClaiming ? 'Claiming...' : 'Claim Daily'}
