@@ -75,7 +75,7 @@ const DailyClaim = ({ address, points, setPoints }) => {
 
       const provider = new ethers.BrowserProvider(window.ethereum);
 
-      const signer = await provider.getSigner(currentAddress);
+      const signer = await provider.getSigner();
 
       const contract = new ethers.Contract(
         contractAddress,
