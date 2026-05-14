@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import PredictionMarketArtifact from '../../artifacts/contracts/PredictionMarket.sol/PredictionMarket.json';
 
 const ARC_TESTNET_CHAIN_ID_HEX = '0x4cef52';
-const FALLBACK_CONTRACT_ADDRESS = '0x18b47ad9e8E820da05CF65b5c12D07d89C11b47CB';
+const FALLBACK_CONTRACT_ADDRESS = '0x18b47ad9e8e820da05cf65b5c12d07d89c11b47cb';
 
 const DailyClaim = ({ address, points, setPoints }) => {
   const [isClaiming, setIsClaiming] = useState(false);
